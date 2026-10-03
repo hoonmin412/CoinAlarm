@@ -1,0 +1,7 @@
+functions/venv/
+__pycache__/
+*.pyc
+*.json.key
+service-account*.json
+.firebase/
+firebase-debug.log

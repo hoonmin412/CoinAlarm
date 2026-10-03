@@ -1,0 +1,25 @@
+# 알림 조건 설정 — 값만 바꾸면 스크립트 수정 없이 조정됩니다.
+
+# 감시할 코인 (업비트 KRW 마켓)
+coins:
+  BTC: {market: KRW-BTC, name: 비트코인}
+  ETH: {market: KRW-ETH, name: 이더리움}
+  SOL: {market: KRW-SOL, name: 솔라나}
+  XRP: {market: KRW-XRP, name: 리플}
+  ADA: {market: KRW-ADA, name: 에이다}
+  DOGE: {market: KRW-DOGE, name: 도지코인}
+
+# 나만의 지표: 아래 코인들의 가격을 동일 비중으로 평균낸 합성 지표 (비트코인 제외 알트코인 지수)
+custom_index:
+  name: 알트 지수
+  members: [ETH, SOL, XRP, ADA, DOGE]
+
+# 가격이 이 이동평균선(일봉 종가 기준)을 상향 돌파 / 하향 이탈하면 알림
+ma_windows: [60, 120]
+
+# 같은 신호가 최초 발생한 뒤 재알림까지 대기하는 시간(시간)
+cooldown_hours: 12
+
+# 업비트 API 호출 간격(초) / 429 재시도 횟수
+request_delay_sec: 0.2
+max_retries: 3
