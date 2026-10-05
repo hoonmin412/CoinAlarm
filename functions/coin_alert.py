@@ -167,6 +167,49 @@ def evaluate(t: Target, cfg: dict) -> list[Signal]:
     return signals
 
 
+def compute_rsi(close: pd.Series, period: int) -> float | None:
+    """Wilder RSI의 마지막 값."""
+    if len(close) <= period:
+        return None
+    delta = close.diff()
+    gain = delta.clip(lower=0).ewm(alpha=1 / period, adjust=False, min_periods=period).mean()
+    loss = (-delta.clip(upper=0)).ewm(alpha=1 / period, adjust=False, min_periods=period).mean()
+    last_gain, last_loss = gain.iloc[-1], loss.iloc[-1]
+    if pd.isna(last_gain) or pd.isna(last_loss):
+        return None
+    if last_loss == 0:
+        return 100.0
+    return float(100 - 100 / (1 + last_gain / last_loss))
+
+
+def build_summary_rows(targets: list[Target], cfg: dict) -> list[dict]:
+    rows = []
+    for t in targets:
+        ma = {w: float(t.closes.iloc[-w:].mean()) for w in cfg["summary_ma_windows"] if len(t.closes) >= w}
+        rows.append(dict(
+            name=t.display if t.key != "INDEX" else cfg["custom_index"]["name"],
+            unit=t.unit, price=t.price, ma=ma,
+            rsi=compute_rsi(t.closes, cfg["rsi_period"]), is_index=t.key == "INDEX",
+        ))
+    return rows
+
+
+def render_summary(targets: list[Target], cfg: dict) -> bytes:
+    import chart
+
+    now = datetime.now(KST)
+    idx = cfg.get("custom_index")
+    sub = f"{now:%Y-%m-%d %H:%M} KST · 업비트"
+    if idx:
+        sub += f" · {idx['name']} = {'+'.join(idx['members'])} 동일비중 평균 (윈도 첫날=100)"
+    return chart.render_summary_image(
+        build_summary_rows(targets, cfg), cfg["summary_ma_windows"], "코인 모니터링 현황", sub)
+
+
+def is_summary_time(cfg: dict) -> bool:
+    return os.environ.get("FORCE_SUMMARY") == "1" or datetime.now(KST).hour in cfg["summary_hours_kst"]
+
+
 def should_notify(state: dict, key: str, signal: Signal, cooldown_hours: int) -> bool:
     """동일 신호 최초 발생 후 cooldown_hours 억제. 방향이 바뀌면 즉시 알림."""
     now = datetime.now(timezone.utc)
@@ -212,6 +255,26 @@ def send_telegram(message: str) -> None:
         log.info("텔레그램 전송 완료")
 
 
+def send_telegram_photo(photo: bytes, caption: str = "") -> None:
+    preview = os.environ.get("PREVIEW_PATH")
+    if preview:
+        Path(preview).write_bytes(photo)
+        log.info("미리보기 이미지 저장: %s", preview)
+    if DRY_RUN:
+        return
+    token, chat_id = os.environ["TELEGRAM_BOT_TOKEN"], os.environ["TELEGRAM_CHAT_ID"]
+    resp = requests.post(
+        f"https://api.telegram.org/bot{token}/sendPhoto",
+        data={"chat_id": chat_id, "caption": caption},
+        files={"photo": ("summary.png", photo, "image/png")},
+        timeout=30,
+    )
+    if not resp.ok:
+        log.error("텔레그램 사진 전송 실패 (%s): %s", resp.status_code, resp.text)
+    else:
+        log.info("텔레그램 사진 전송 완료")
+
+
 def notify_fatal_error(exc: Exception) -> None:
     try:
         send_telegram(f"⚠️ 코인 알림 실행 오류\n<code>{type(exc).__name__}: {exc}</code>")
@@ -241,6 +304,9 @@ def main() -> int:
         send_telegram(f"🪙 코인 이동평균선 알림 ({now} KST)\n\n" + "\n".join(lines))
     else:
         log.info("보낼 알림 없음")
+
+    if is_summary_time(cfg):
+        send_telegram_photo(render_summary(targets, cfg))
     return 0
 
 

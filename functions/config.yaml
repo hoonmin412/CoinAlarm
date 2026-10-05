@@ -23,3 +23,8 @@ cooldown_hours: 12
 # 업비트 API 호출 간격(초) / 429 재시도 횟수
 request_delay_sec: 0.2
 max_retries: 3
+
+# 현황 요약 이미지 (표: 현재가·이동평균선·RSI)
+summary_hours_kst: [9, 12, 15, 18, 21]   # 이 시각(KST)의 정시 실행 때 이미지 전송
+summary_ma_windows: [30, 60, 120]
+rsi_period: 14

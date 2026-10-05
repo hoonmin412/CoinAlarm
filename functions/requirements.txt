@@ -3,3 +3,5 @@ google-cloud-firestore>=2.16
 pandas>=2.2
 requests>=2.32
 PyYAML>=6.0
+matplotlib>=3.9
+numpy>=1.26

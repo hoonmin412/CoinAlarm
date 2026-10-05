@@ -1,5 +1,7 @@
 {
   "projects": {
-    "default": "REPLACE_WITH_YOUR_FIREBASE_PROJECT_ID"
-  }
+    "default": "bitcoinalarm-97754"
+  },
+  "targets": {},
+  "etags": {}
 }
